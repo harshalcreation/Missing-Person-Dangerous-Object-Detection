@@ -1,0 +1,23 @@
+# Ignore environment variables
+.env
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore virtual environments
+venv/
+.venv/
+
+# Ignore logs and temporary files
+*.log
+*.sqlite3
+db.sqlite3
+
+# Ignore compiled Python files
+*.egg-info/
+
+# Ignore dependency files
+requirements.txt.lock

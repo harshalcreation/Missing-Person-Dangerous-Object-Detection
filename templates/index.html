@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Surveillance</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+        video, img {
+            width: 60%;
+            border: 2px solid black;
+            margin-top: 10px;
+        }
+        button {
+            padding: 10px;
+            font-size: 16px;
+            margin: 10px;
+            cursor: pointer;
+        }
+        #start { background-color: green; color: white; }
+        #stop { background-color: red; color: white; }
+    </style>
+</head>
+<body>
+
+    <h1>Live Surveillance System</h1>
+    
+    <button id="start">Start Surveillance</button>
+    <button id="stop">Stop Surveillance</button>
+
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas" style="display: none;"></canvas>
+    <h2>Processed Video</h2>
+    <img id="processedVideo" src="">
+
+    <script>
+        const video = document.getElementById("video");
+        const canvas = document.getElementById("canvas");
+        const imgTag = document.getElementById("processedVideo");
+        let streamActive = false;
+
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                streamActive = true;
+                sendFrameToServer();
+            } catch (err) {
+                console.error("Error accessing webcam:", err);
+            }
+        }
+
+        function stopCamera() {
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+            }
+            streamActive = false;
+        }
+
+        function sendFrameToServer() {
+            if (!streamActive) return;
+
+            const ctx = canvas.getContext("2d");
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            canvas.toBlob((blob) => {
+                const formData = new FormData();
+                formData.append("frame", blob, "frame.jpg");
+
+                fetch("/process_frame", {
+                    method: "POST",
+                    body: formData
+                })
+                .then(response => response.blob())
+                .then(blob => {
+                    imgTag.src = URL.createObjectURL(blob);
+                })
+                .catch(error => console.error("Error sending frame:", error));
+            }, "image/jpeg");
+
+            setTimeout(sendFrameToServer, 100);  // Send a new frame every 100ms
+        }
+
+        document.getElementById("start").addEventListener("click", () => {
+            fetch("/start_surveillance", { method: "POST" })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data.message);
+                    startCamera();
+                })
+                .catch(error => console.error("Error starting surveillance:", error));
+        });
+
+        document.getElementById("stop").addEventListener("click", () => {
+            fetch("/stop_surveillance", { method: "POST" })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data.message);
+                    stopCamera();
+                })
+                .catch(error => console.error("Error stopping surveillance:", error));
+        });
+
+    </script>
+</body>
+</html>
